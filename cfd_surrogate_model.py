@@ -7,63 +7,63 @@ from sklearn.pipeline import make_pipeline
 import warnings
 warnings.filterwarnings('ignore')
 
-# 1. Eğitim Verilerimiz (Senin analiz raporundaki veriler)
+# 1. Kapsamlı Eğitim Verisi
 veriler = [
-    [2, 40, 0,  2.25, 0.228], [2, 40, 3,  2.25, 0.543], [2, 40, 6,  2.25, 0.837], 
-    [2, 40, 9,  2.25, 1.150], [2, 40, 15, 2.25, 1.010],
-    [0, 0,  5, 1.5, 0.548], [1, 40, 5, 1.5, 0.655], [2, 40, 5, 1.5, 0.767], 
-    [4, 40, 5, 1.5, 0.972], [6, 40, 5, 1.5, 1.150],
-    [2, 10, 5, 1.5, 0.860], [2, 20, 5, 1.5, 0.830], [2, 30, 5, 1.5, 0.800], 
-    [2, 50, 5, 1.5, 0.730],
-    [2, 40, 5, 5.0,  0.716], [2, 40, 5, 10.0, 0.814], [2, 40, 5, 20.0, 0.830], 
-    [2, 40, 5, 30.0, 0.853]
+    [2, 40, 0,  2.25, 0.228, 0.0089], [2, 40, 3,  2.25, 0.543, 0.0105],
+    [2, 40, 6,  2.25, 0.837, 0.0138], [2, 40, 9,  2.25, 1.150, 0.0187],
+    [2, 40, 15, 2.25, 1.010, 0.0303], [0, 0,  5, 1.5, 0.548, 0.0150],
+    [1, 40, 5, 1.5, 0.655, 0.0162], [2, 40, 5, 1.5, 0.767, 0.0185],
+    [4, 40, 5, 1.5, 0.972, 0.0210], [6, 40, 5, 1.5, 1.150, 0.0245],
+    [2, 40, 5, 5.0,  0.716, 0.0544], [2, 40, 5, 10.0, 0.814, 0.0501],
+    [2, 40, 5, 20.0, 0.830, 0.0490], [2, 40, 5, 30.0, 0.853, 0.0450]
 ]
-df = pd.DataFrame(veriler, columns=['Kamburluk_%', 'Pozisyon_%', 'AoA_Derece', 'Hiz_ms', 'CL'])
-X = df[['Kamburluk_%', 'Pozisyon_%', 'AoA_Derece', 'Hiz_ms']]
-y = df['CL']
 
-# 2. Yapay Sinir Ağı (YSA) Modeli Kurulumu
-# Not: YSA'lar birim farklılıklarına duyarlıdır, bu yüzden StandardScaler ile veriyi ölçekliyoruz.
-# 'lbfgs' çözücüsü ufak veri setlerinde pürüzsüz fiziksel eğriler bulmak için idealdir.
+df = pd.DataFrame(veriler, columns=['Kamburluk_%', 'Pozisyon_%', 'AoA_Derece', 'Hiz_ms', 'CL', 'CD'])
+X = df[['Kamburluk_%', 'Pozisyon_%', 'AoA_Derece', 'Hiz_ms']]
+y = df[['CL', 'CD']] 
+
+# 2. Çok Çıktılı Yapay Sinir Ağı
 model_ysa = make_pipeline(
     StandardScaler(),
-    MLPRegressor(hidden_layer_sizes=(32, 32), activation='tanh', solver='lbfgs', max_iter=2000, random_state=42)
+    MLPRegressor(hidden_layer_sizes=(64, 64), activation='tanh', solver='lbfgs', max_iter=2000, random_state=42)
 )
-
 model_ysa.fit(X, y)
-print("✅ Yapay Sinir Ağı başarıyla eğitildi!\n")
 
-# 3. Pürüzsüz bir eğri için 0'dan 15'e kadar 100 farklı hücum açısı (0, 0.15, 0.30... 15.0)
+# 3. YENİ SENARYO TESTİ
 aoa_hassas = np.linspace(0, 15, 100)
+yeni_veriler_ysa = pd.DataFrame({'Kamburluk_%': 3, 'Pozisyon_%': 40, 'AoA_Derece': aoa_hassas, 'Hiz_ms': 15.0})
 
-yeni_veriler_ysa = pd.DataFrame({
-    'Kamburluk_%': 3,
-    'Pozisyon_%': 40,
-    'AoA_Derece': aoa_hassas,
-    'Hiz_ms': 15.0
-})
+tahminler = model_ysa.predict(yeni_veriler_ysa)
+tahmin_edilen_CL = tahminler[:, 0]
+tahmin_edilen_CD = tahminler[:, 1]
+verimlilik = tahmin_edilen_CL / tahmin_edilen_CD
 
-# 100 farklı senaryonun CL değerini tek seferde tahmin et
-tahmin_edilen_CL_ysa = model_ysa.predict(yeni_veriler_ysa)
+# 4. Profesyonel Çift Eksenli Grafik
+fig, ax1 = plt.subplots(figsize=(10, 6))
 
-# 4. Sonuçları Grafiğe Dökme
-plt.figure(figsize=(10, 6))
-plt.plot(aoa_hassas, tahmin_edilen_CL_ysa, linestyle='-', color='red', linewidth=2.5)
+color1 = 'tab:red'
+ax1.set_xlabel('Hücum Açısı (AoA - Derece)', fontsize=12)
+ax1.set_ylabel('Kaldırma Katsayısı (CL)', color=color1, fontsize=12, fontweight='bold')
+ax1.plot(aoa_hassas, tahmin_edilen_CL, color=color1, linewidth=3, label='Tahmini CL')
+ax1.tick_params(axis='y', labelcolor=color1)
+ax1.grid(True, linestyle='--', alpha=0.5)
 
-# Grafiğin görsel ayarları
-plt.title('Yapay Sinir Ağı (YSA) ile NACA 3412 Pürüzsüz Aerodinamik Eğrisi', fontsize=14, fontweight='bold')
-plt.xlabel('Hücum Açısı (AoA - Derece)', fontsize=12)
-plt.ylabel('Kaldırma Katsayısı (CL)', fontsize=12)
-plt.grid(True, linestyle='--', alpha=0.7)
+ax2 = ax1.twinx()  
+color2 = 'tab:blue'
+ax2.set_ylabel('Sürükleme Katsayısı (CD)', color=color2, fontsize=12, fontweight='bold')
+ax2.plot(aoa_hassas, tahmin_edilen_CD, color=color2, linewidth=3, linestyle='--', label='Tahmini CD')
+ax2.tick_params(axis='y', labelcolor=color2)
 
-# Maksimum Kaldırma (Stall Başlangıcı) noktasını bulup işaretle
-max_cl_ysa = max(tahmin_edilen_CL_ysa)
-max_cl_aoa_ysa = aoa_hassas[list(tahmin_edilen_CL_ysa).index(max_cl_ysa)]
+max_verim = max(verimlilik)
+max_verim_aoa = aoa_hassas[np.argmax(verimlilik)]
+max_verim_cl = tahmin_edilen_CL[np.argmax(verimlilik)]
 
-plt.annotate(f'Stall Bölgesi Girişi\n(Açı: {max_cl_aoa_ysa:.1f}°, CL: {max_cl_ysa:.3f})', 
-             xy=(max_cl_aoa_ysa, max_cl_ysa), 
-             xytext=(max_cl_aoa_ysa-5, max_cl_ysa-0.1),
-             arrowprops=dict(facecolor='black', shrink=0.05, width=1.5, headwidth=7), 
-             fontsize=11, color='darkred', fontweight='bold')
+ax1.annotate(f'Maksimum Aerodinamik Verim\n(Açı: {max_verim_aoa:.1f}°, CL/CD: {max_verim:.1f})', 
+             xy=(max_verim_aoa, max_verim_cl), 
+             xytext=(max_verim_aoa-6, max_verim_cl-0.2),
+             arrowprops=dict(facecolor='darkgreen', shrink=0.05, width=2, headwidth=8), 
+             fontsize=11, color='darkgreen', fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="darkgreen", lw=2))
 
+plt.title('AI-Driven CFD: NACA 3412 Aerodinamik Performans Tahmini', fontsize=14, fontweight='bold')
+fig.tight_layout()
 plt.show()
