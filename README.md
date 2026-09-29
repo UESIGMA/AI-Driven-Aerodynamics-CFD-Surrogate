@@ -14,7 +14,7 @@ The trained Neural Network successfully captures complex fluid dynamics, includi
 
 As seen in the prediction below for a new unseen airfoil (NACA 3412), the model correctly identifies the point of **Maximum Aerodynamic Efficiency ($C_L/C_D$)** and the stall region entry based solely on learned physics.
 
-![Aerodynamic Performance](aerodynamic_performance.png)
+![Aerodynamic Performance](aerodynamic_performance_eng.png)
 
 ## 💻 How to Use
 1. Clone this repository.
